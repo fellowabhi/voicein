@@ -50,4 +50,4 @@ def run_pipeline(
 
     paste_text(formatted)
     snippet = formatted.replace("\r", "").splitlines()[0][:92]
-    return True, f"Pasted ({len(formatted)} chars): {snippet!r}"
+    return True, f"On clipboard + pasted ({len(formatted)} chars): {snippet!r}"

@@ -23,3 +23,5 @@ rewrite_level = 0
 
 [inject]
 method = "clipboard"
+# Transcription stays on the clipboard after paste (CopyQ / manual Ctrl+V recovery).
+keep_on_clipboard = true
