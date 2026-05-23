@@ -1,0 +1,25 @@
+[hotkey]
+# Optional toggle shortcut; leave empty "" to disable (tray-only).
+shortcut = "Super+Shift+V"
+
+[audio]
+sample_rate = 16000
+# Empty "" = default input device (see `python -m voicein list-devices`)
+input_device = ""
+# Safety cap seconds; auto-stop then process (0 = unlimited)
+max_duration_secs = 300
+
+[stt]
+provider = "openai"
+model = "gpt-4o-mini-transcribe"
+language = "en"
+
+[llm]
+provider = "openai"
+model = "gpt-4o-mini"
+enabled = true
+# 0 = format only (no rewriting). 1-10 stronger polish — see README.
+rewrite_level = 0
+
+[inject]
+method = "clipboard"

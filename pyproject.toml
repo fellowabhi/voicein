@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voicein"
+version = "0.1.0"
+description = "Toggle dictation: STT + LLM format, paste at cursor (Ubuntu/X11)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+  "openai>=1.55.0",
+  "pynput>=1.7.7",
+  "sounddevice>=0.5.0",
+  "numpy>=1.26",
+  "pystray>=0.19.5",
+  "pillow>=10.0",
+  "python-dotenv>=1.0",
+]
+
+[project.scripts]
+voicein = "voicein.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
