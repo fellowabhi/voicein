@@ -29,6 +29,8 @@ _SHORTCUT_KEYS: dict[str, keyboard.Key] = {
     "windows": keyboard.Key.cmd,
     "esc": keyboard.Key.esc,
     "escape": keyboard.Key.esc,
+    "ins": keyboard.Key.insert,
+    "insert": keyboard.Key.insert,
 }
 
 

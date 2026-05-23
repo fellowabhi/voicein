@@ -1,6 +1,6 @@
 [hotkey]
 # Optional toggle shortcut; leave empty "" to disable (tray-only).
-shortcut = "Super+Shift+V"
+shortcut = "Ctrl+Shift+Ins"
 
 [audio]
 sample_rate = 16000
