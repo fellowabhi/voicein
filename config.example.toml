@@ -25,3 +25,10 @@ rewrite_level = 0
 method = "clipboard"
 # Transcription stays on the clipboard after paste (CopyQ / manual Ctrl+V recovery).
 keep_on_clipboard = true
+
+[cues]
+# Audio feedback for toggle mode (Ctrl+Shift+Ins). Preview: ./scripts/preview-sounds.sh
+# Full path to .oga/.wav, or canberra:bell / canberra:complete
+start = "/usr/share/sounds/freedesktop/stereo/bell.oga"
+stop = "/usr/share/sounds/freedesktop/stereo/complete.oga"
+paste = "/usr/share/sounds/freedesktop/stereo/message.oga"

@@ -64,6 +64,10 @@ class VoicEinConfig:
 
     inject_method: str = "clipboard"
 
+    cue_sound_start: str | None = None
+    cue_sound_stop: str | None = None
+    cue_sound_paste: str | None = None
+
     openai_api_key: str | None = None
 
 
@@ -80,6 +84,13 @@ def parse_device(raw: Any) -> str | int | None:
         return int(s)
     except ValueError:
         return s
+
+
+def _optional_str(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    return text or None
 
 
 def _load_dotenv_files(*, global_env: Path, project_env: Path) -> None:
@@ -121,6 +132,7 @@ def load_config(
     st = raw.get("stt", {}) if isinstance(raw.get("stt"), dict) else {}
     lm = raw.get("llm", {}) if isinstance(raw.get("llm"), dict) else {}
     ij = raw.get("inject", {}) if isinstance(raw.get("inject"), dict) else {}
+    cu = raw.get("cues", {}) if isinstance(raw.get("cues"), dict) else {}
 
     shortcut = hk.get("shortcut", VoicEinConfig.hotkey_shortcut)
     shortcut_s = shortcut.strip() if isinstance(shortcut, str) else None
@@ -137,6 +149,9 @@ def load_config(
         llm_model=str(lm.get("model", "gpt-4o-mini")),
         llm_rewrite_level=max(0, min(10, int(lm.get("rewrite_level", 0)))),
         inject_method=str(ij.get("method", "clipboard")),
+        cue_sound_start=_optional_str(cu.get("start")),
+        cue_sound_stop=_optional_str(cu.get("stop")),
+        cue_sound_paste=_optional_str(cu.get("paste")),
     )
 
     if env_override:

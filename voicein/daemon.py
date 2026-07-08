@@ -13,6 +13,7 @@ from voicein.audio.recorder import AudioRecorder
 from voicein.config import VoicEinConfig
 from voicein.hotkey import ShortcutListener
 from voicein.pipeline import run_pipeline
+from voicein.power import install_sleep_watcher
 from voicein.state import AppState
 from voicein.tray import TrayController
 
@@ -111,21 +112,41 @@ class VoiceDaemon:
 
 
     def bootstrap(self) -> None:
-
         self._shortcut.start()
 
-
-
-
         shortcut = getattr(self.cfg, 'hotkey_shortcut', '') or ''
-
         hint = shortcut if shortcut else '[tray only]'
-
-
-
-
-
         logger.info('VoiceDaemon online — hotkey %s', hint)
+
+        install_sleep_watcher(
+            on_sleep=self._on_system_sleep,
+            on_wake=self._on_system_wake,
+        )
+
+    def _on_system_sleep(self) -> None:
+        """Drop pynput keyboard grab before suspend (common cause of frozen GNOME)."""
+
+        with self._state_lock:
+            if self._state == AppState.RECORDING:
+                self.recorder.discard()
+                self._state = AppState.IDLE
+                self.tray.disarm_recording_timer()
+                self.tray.signal_ready()
+
+        self._shortcut.stop()
+
+    def _on_system_wake(self) -> None:
+        """Re-attach hotkey after X11 session recovers from sleep."""
+
+        def _reattach() -> None:
+            if self._shutdown.is_set():
+                return
+            try:
+                self._shortcut.start()
+            except Exception:  # noqa: BLE001
+                logger.exception('Failed to reattach hotkey after wake')
+
+        threading.Timer(4.0, _reattach).start()
 
 
 

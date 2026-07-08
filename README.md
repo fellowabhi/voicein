@@ -1,12 +1,14 @@
 # VoiceIn
 
-Toggle dictation for **Ubuntu GNOME X11**: record from the system tray (or optional global shortcut), transcribe with OpenAI, optionally refine with GPT-4o-mini, then paste via clipboard + `xdotool`.
+Toggle dictation for **Ubuntu GNOME X11**: press a shortcut to record, transcribe with OpenAI, optionally refine with GPT-4o-mini, then paste via clipboard + `xdotool`.
+
+**Recommended:** on-demand toggle mode (no background process, no sleep freezes).
 
 ## Requirements
 
 - Ubuntu 24.04+ GNOME session on **X11** (clipboard paste uses `xdotool`)
 - Microphone access
-- `xdotool`, `xclip`, PortAudio (`libportaudio2` / headers for build)
+- `xdotool`, `xclip`, `paplay` (PulseAudio), PortAudio (`libportaudio2` / headers for build)
 - Python 3.10+
 
 ## Install
@@ -28,17 +30,32 @@ Or in `~/.config/voicein/.env`. The project file wins when both exist. `OPENAI_A
 
 Optional: edit `~/.config/voicein/config.toml`.
 
-Start the daemon (user systemd example in `install.sh`):
+### On-demand mode (recommended)
+
+Install the GNOME shortcut (default **Ctrl+Shift+Insert**):
 
 ```bash
-systemctl --user enable --now voicein.service
+./scripts/install-toggle-shortcut.sh
 ```
 
-Or run once:
+Or bind manually in **Settings → Keyboard → Custom Shortcuts** to:
 
 ```bash
-/path/to/repo/.venv/bin/voicein run
+/path/to/repo/scripts/voicein-toggle.sh
 ```
+
+Leave `[hotkey] shortcut = ""` in config — do **not** run `voicein run` at the same time.
+
+### Tray daemon (optional / legacy)
+
+Foreground tray + optional in-app global shortcut (can freeze GNOME after sleep on X11):
+
+```bash
+./scripts/voicein-run.sh
+# or: .venv/bin/python -m voicein run
+```
+
+User systemd / GNOME autostart files are installed by `install.sh` but **disabled by default**; enable only if you want the tray daemon at login.
 
 ### List microphones
 
@@ -46,13 +63,49 @@ Or run once:
 .venv/bin/python -m voicein list-devices
 ```
 
-## Usage
+## Usage — on-demand toggle
 
-- **Tray icon**: left-click **Toggle** — recording on/off. While recording: left-click again to stop; STT runs, then formatted text pastes where the caret is focused.
-- **Menus**: Cancel, rewrite level presets (0/3/6/9), pause LLM, open config folder, Quit.
-- **Shortcut** (optional): default `Super+Shift+V` toggles like the tray. Press **Escape** while recording to cancel.
+- **First press** — start recording (notification + start sound)
+- **Second press** — stop, transcribe, paste, exit (notification + stop sound + paste sound)
+- Logs: `~/.local/state/voicein/toggle.log`
+
+### Audio cues
+
+Configure in `~/.config/voicein/config.toml`:
+
+```toml
+[cues]
+start = "/usr/share/sounds/freedesktop/stereo/device-added.oga"
+stop = "/usr/share/sounds/freedesktop/stereo/device-removed.oga"
+paste = "/usr/share/sounds/freedesktop/stereo/message.oga"
+```
+
+Preview system sounds:
+
+```bash
+./scripts/preview-sounds.sh
+```
+
+Paths can also use `canberra:bell` style event names.
+
+### Skip LLM formatting
+
+Paste raw transcription only:
+
+```toml
+[llm]
+enabled = false
+```
+
+## Usage — tray daemon
+
+- **Tray icon**: left-click toggles recording on/off; STT runs, then text pastes at the focused caret.
+- **Menus**: Cancel, rewrite presets (0/3/6/9), LLM on/off, open config folder, Quit.
+- **In-app shortcut** (optional, `[hotkey]` in config): same toggle; **Escape** cancels while recording.
 
 ## `rewrite_level` (0–10)
+
+Only applies when `[llm] enabled = true`.
 
 - **0** (default): remove fillers & obvious STT glitches; apply spoken layout commands (**new paragraph**, **bullet point**); **no paraphrasing**.
 - Higher values gradually allow clearer wording / prompt-style structure while **still forbidding invented requirements or facts**. See `[llm]` in example config.
@@ -63,7 +116,8 @@ Or run once:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
-voicein run --foreground
+python -m voicein run -v
+python -m voicein toggle -v
 ```
 
 ## License

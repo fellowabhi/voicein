@@ -6,14 +6,6 @@ import argparse
 import logging
 import sys
 
-import sounddevice as sd
-
-from openai import OpenAI
-
-from voicein.config import load_config
-from voicein.daemon import VoiceDaemon
-from voicein.tray import TrayController
-
 LOGGER = logging.getLogger('voicein.cli')
 
 
@@ -25,6 +17,8 @@ def configure_logging(verbose: bool) -> None:
 
 
 def list_inputs() -> int:
+    import sounddevice as sd
+
     print('Pulse/PortAudio microphones (max_input_channels > 0)')
     devices = sd.query_devices()
 
@@ -68,6 +62,12 @@ def list_inputs() -> int:
 
 
 def launch_tray(verbose: bool) -> int:
+    from openai import OpenAI
+
+    from voicein.config import load_config
+    from voicein.daemon import VoiceDaemon
+    from voicein.tray import TrayController
+
     configure_logging(verbose)
     cfg = load_config()
 
@@ -99,6 +99,14 @@ def build_parser() -> argparse.ArgumentParser:
     run = subs.add_parser('run', help='Start tray recorder (default)')
     run.add_argument('-v', '--verbose', action='store_true')
 
+    toggle = subs.add_parser(
+        'toggle',
+        help='On-demand mode: start/stop recording via GNOME shortcut (no pynput)',
+    )
+    toggle.add_argument('-v', '--verbose', action='store_true')
+
+    subs.add_parser('record-session', help=argparse.SUPPRESS)
+
     subs.add_parser('list-devices', help='Enumerate capture devices')
 
     return parser
@@ -108,7 +116,7 @@ def main(argv: list[str] | None = None) -> int:
     raw = list(argv if argv is not None else sys.argv[1:])
     if not raw:
         raw = ['run']
-    elif raw[0] not in {'run', 'list-devices'}:
+    elif raw[0] not in {'run', 'list-devices', 'toggle', 'record-session'}:
 
         raw = ['run'] + raw
 
@@ -119,10 +127,19 @@ def main(argv: list[str] | None = None) -> int:
         configure_logging(verbose=False)
         return list_inputs()
 
+    if args.command == 'toggle':
+        from voicein.toggle_session import handle_toggle
+
+        return handle_toggle(verbose=bool(getattr(args, 'verbose', False)))
+
+    if args.command == 'record-session':
+        from voicein.toggle_session import run_record_session
+
+        return run_record_session()
+
     verbose = bool(getattr(args, 'verbose', False))
     return launch_tray(verbose)
 
 
 if __name__ == '__main__':
     sys.exit(main())
-

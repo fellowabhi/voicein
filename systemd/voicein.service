@@ -1,18 +1,16 @@
 [Unit]
 Description=VoiceIn tray dictation (STT + LLM paste)
+After=graphical-session.target
+PartOf=graphical-session.target
 
 [Service]
 Type=simple
-
-Environment=DISPLAY=:0
-Environment=XDG_RUNTIME_DIR=%t
-
 WorkingDirectory=@VOICEIN_REPO@
-
-ExecStart=@VOICEIN_VENV_PYTHON@ -m voicein run
-
+ExecStart=@VOICEIN_REPO@/scripts/voicein-run.sh
 Restart=on-failure
-RestartSec=5
+RestartSec=20
+StartLimitBurst=5
+StartLimitIntervalSec=300
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target

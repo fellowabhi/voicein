@@ -120,6 +120,8 @@ class ShortcutListener:
     def start(self) -> None:
         if not self._combo:
             return
+        if self._listener is not None:
+            self.stop()
         self._listener = keyboard.Listener(on_press=self._press, on_release=self._release)
         self._listener.start()
         logger.info("Shortcut listener attached (%d keys)", len(self._combo))
