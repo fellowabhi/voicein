@@ -11,7 +11,7 @@ max_duration_secs = 300
 
 [stt]
 provider = "openai"
-model = "gpt-4o-mini-transcribe"
+model = "gpt-transcribe"
 language = "en"
 
 [llm]
@@ -23,8 +23,12 @@ rewrite_level = 0
 
 [inject]
 method = "clipboard"
-# Transcription stays on the clipboard after paste (CopyQ / manual Ctrl+V recovery).
-keep_on_clipboard = true
+auto_paste = true
+# GNOME Wayland: ydotool + ydotoold (./scripts/setup-wayland-paste.sh). Uses ydotool type on GNOME (Ctrl+V chords are dropped by Mutter).
+wayland_paste = "ydotool"
+
+[feedback]
+desktop_notifications = false
 
 [cues]
 # Audio feedback for toggle mode (Ctrl+Shift+Ins). Preview: ./scripts/preview-sounds.sh
@@ -32,3 +36,9 @@ keep_on_clipboard = true
 start = "/usr/share/sounds/freedesktop/stereo/bell.oga"
 stop = "/usr/share/sounds/freedesktop/stereo/complete.oga"
 paste = "/usr/share/sounds/freedesktop/stereo/message.oga"
+
+[web]
+# Phone recorder. Keep host = 127.0.0.1 (Cloudflare tunnel only).
+host = "127.0.0.1"
+port = 8765
+public_host = "voice.rasdine.com"

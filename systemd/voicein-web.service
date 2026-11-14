@@ -1,0 +1,14 @@
+[Unit]
+Description=VoiceIn phone web recorder (localhost only)
+After=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=@VOICEIN_REPO@
+Environment=DISPLAY=:0
+ExecStart=@VOICEIN_REPO@/scripts/voicein-web.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=VoiceIn Web
+Comment=Phone dictation listener (localhost; Cloudflare tunnel)
+Exec=@VOICEIN_REPO@/scripts/voicein-web.sh
+Hidden=false
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=3

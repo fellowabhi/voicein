@@ -9,11 +9,29 @@ from openai import OpenAI
 
 def transcribe_wav(client: OpenAI, *, wav_bytes: bytes, model: str, language: str) -> str:
     """Upload mono PCM WAV (`wav_bytes`) to OpenAI's transcription endpoint."""
-    if not wav_bytes:
+    return transcribe_audio(
+        client,
+        data=wav_bytes,
+        filename="recording.wav",
+        model=model,
+        language=language,
+    )
+
+
+def transcribe_audio(
+    client: OpenAI,
+    *,
+    data: bytes,
+    filename: str,
+    model: str,
+    language: str,
+) -> str:
+    """Upload an audio blob (wav/webm/mp4/…) to OpenAI's transcription endpoint."""
+    if not data:
         return ""
 
-    file_obj = BytesIO(wav_bytes)
-    file_obj.name = "recording.wav"
+    file_obj = BytesIO(data)
+    file_obj.name = filename or "recording.wav"
 
     resp = client.audio.transcriptions.create(
         model=model,

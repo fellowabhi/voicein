@@ -61,6 +61,68 @@ def list_inputs() -> int:
     return 0
 
 
+def setup_web_auth(*, password: str | None, rotate: bool) -> int:
+    from voicein.web_auth import (
+        WebAuth,
+        generate_password,
+        hash_password,
+        load_auth,
+        validate_new_password,
+        write_auth,
+    )
+
+    existing = load_auth()
+    if existing is not None and not rotate and not password:
+        from voicein.web_auth import auth_path
+
+        print(f'Web password already set ({auth_path()}).')
+        print('Re-run with --rotate to generate a new one (signs everyone out).')
+        return 0
+
+    chosen = (password or '').strip() or generate_password()
+    err = validate_new_password(chosen)
+    if err:
+        LOGGER.error('%s', err)
+        return 2
+
+    import secrets
+
+    from voicein.web_auth import auth_path
+
+    salt, hashed = hash_password(chosen)
+    write_auth(
+        WebAuth(
+            password_salt=salt,
+            password_hash=hashed,
+            session_secret=secrets.token_bytes(32),
+            session_days=existing.session_days if existing else 90,
+        )
+    )
+
+    print(f'Wrote {auth_path()} (mode 600)')
+    if password:
+        print('Password saved (hash only). It will not be shown again.')
+    else:
+        print()
+        print('  Web password (save this; it is not stored in plain text):')
+        print(f'    {chosen}')
+        print()
+        print('  Stays signed in for 90 days on this phone after login.')
+    return 0
+
+
+def launch_web() -> int:
+    from voicein.config import load_config
+    from voicein.web import serve
+
+    cfg = load_config()
+    if not cfg.openai_api_key:
+        LOGGER.error('Missing API key — set VOICEIN_OPENAI_API_KEY in project .env')
+        return 3
+    serve(host=cfg.web_host, port=cfg.web_port, public_host=cfg.web_public_host)
+    return 0
+
+
 def launch_tray(verbose: bool) -> int:
     from openai import OpenAI
 
@@ -106,6 +168,17 @@ def build_parser() -> argparse.ArgumentParser:
     toggle.add_argument('-v', '--verbose', action='store_true')
 
     subs.add_parser('record-session', help=argparse.SUPPRESS)
+    subs.add_parser(
+        'toggle-tray',
+        help=argparse.SUPPRESS,
+    )
+
+    web = subs.add_parser('web', help='Phone web recorder (localhost; put Cloudflare in front)')
+    web.add_argument('-v', '--verbose', action='store_true')
+
+    setup = subs.add_parser('web-setup', help='Create or rotate the web UI password')
+    setup.add_argument('--password', help='Set this password instead of generating one')
+    setup.add_argument('--rotate', action='store_true', help='Replace an existing password')
 
     subs.add_parser('list-devices', help='Enumerate capture devices')
 
@@ -116,7 +189,15 @@ def main(argv: list[str] | None = None) -> int:
     raw = list(argv if argv is not None else sys.argv[1:])
     if not raw:
         raw = ['run']
-    elif raw[0] not in {'run', 'list-devices', 'toggle', 'record-session'}:
+    elif raw[0] not in {
+        'run',
+        'list-devices',
+        'toggle',
+        'record-session',
+        'toggle-tray',
+        'web',
+        'web-setup',
+    }:
 
         raw = ['run'] + raw
 
@@ -127,6 +208,16 @@ def main(argv: list[str] | None = None) -> int:
         configure_logging(verbose=False)
         return list_inputs()
 
+    if args.command == 'web-setup':
+        return setup_web_auth(
+            password=getattr(args, 'password', None),
+            rotate=bool(getattr(args, 'rotate', False)),
+        )
+
+    if args.command == 'web':
+        configure_logging(verbose=bool(getattr(args, 'verbose', False)))
+        return launch_web()
+
     if args.command == 'toggle':
         from voicein.toggle_session import handle_toggle
 
@@ -136,6 +227,11 @@ def main(argv: list[str] | None = None) -> int:
         from voicein.toggle_session import run_record_session
 
         return run_record_session()
+
+    if args.command == 'toggle-tray':
+        from voicein.tray_toggle import run_toggle_tray
+
+        return run_toggle_tray()
 
     verbose = bool(getattr(args, 'verbose', False))
     return launch_tray(verbose)

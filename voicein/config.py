@@ -54,7 +54,7 @@ class VoicEinConfig:
     audio_max_duration_secs: int = 300
 
     stt_provider: str = "openai"
-    stt_model: str = "gpt-4o-mini-transcribe"
+    stt_model: str = "gpt-transcribe"
     stt_language: str = "en"
 
     llm_enabled: bool = True
@@ -63,10 +63,18 @@ class VoicEinConfig:
     llm_rewrite_level: int = 0
 
     inject_method: str = "clipboard"
+    inject_auto_paste: bool = True
+    inject_wayland_paste: str = "ydotool"
+
+    feedback_desktop_notifications: bool = False
 
     cue_sound_start: str | None = None
     cue_sound_stop: str | None = None
     cue_sound_paste: str | None = None
+
+    web_host: str = "127.0.0.1"
+    web_port: int = 8765
+    web_public_host: str = "voice.rasdine.com"
 
     openai_api_key: str | None = None
 
@@ -133,6 +141,8 @@ def load_config(
     lm = raw.get("llm", {}) if isinstance(raw.get("llm"), dict) else {}
     ij = raw.get("inject", {}) if isinstance(raw.get("inject"), dict) else {}
     cu = raw.get("cues", {}) if isinstance(raw.get("cues"), dict) else {}
+    wb = raw.get("web", {}) if isinstance(raw.get("web"), dict) else {}
+    fb = raw.get("feedback", {}) if isinstance(raw.get("feedback"), dict) else {}
 
     shortcut = hk.get("shortcut", VoicEinConfig.hotkey_shortcut)
     shortcut_s = shortcut.strip() if isinstance(shortcut, str) else None
@@ -142,16 +152,22 @@ def load_config(
         audio_input_device=parse_device(au.get("input_device", "")),
         audio_max_duration_secs=int(au.get("max_duration_secs", 300)),
         stt_provider=str(st.get("provider", "openai")),
-        stt_model=str(st.get("model", "gpt-4o-mini-transcribe")),
+        stt_model=str(st.get("model", "gpt-transcribe")),
         stt_language=str(st.get("language", "en")),
         llm_enabled=bool(lm.get("enabled", True)),
         llm_provider=str(lm.get("provider", "openai")),
         llm_model=str(lm.get("model", "gpt-4o-mini")),
         llm_rewrite_level=max(0, min(10, int(lm.get("rewrite_level", 0)))),
         inject_method=str(ij.get("method", "clipboard")),
+        inject_auto_paste=bool(ij.get("auto_paste", True)),
+        inject_wayland_paste=str(ij.get("wayland_paste", "ydotool")),
+        feedback_desktop_notifications=bool(fb.get("desktop_notifications", False)),
         cue_sound_start=_optional_str(cu.get("start")),
         cue_sound_stop=_optional_str(cu.get("stop")),
         cue_sound_paste=_optional_str(cu.get("paste")),
+        web_host=str(wb.get("host", "127.0.0.1")),
+        web_port=int(wb.get("port", 8765)),
+        web_public_host=str(wb.get("public_host", "voice.rasdine.com")),
     )
 
     if env_override:

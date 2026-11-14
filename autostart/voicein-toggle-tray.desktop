@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=VoiceIn status
+Comment=Tray icon for toggle dictation (recording / transcribing / done)
+Exec=@VOICEIN_REPO@/.venv/bin/python -m voicein toggle-tray
+Terminal=false
+Categories=Utility;
+X-GNOME-Autostart-enabled=true
+StartupNotify=false

@@ -1,0 +1,12 @@
+[Unit]
+Description=ydotool daemon (Wayland keyboard simulation for VoiceIn paste)
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=@VOICEIN_REPO@/scripts/ydotoold-user.sh
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

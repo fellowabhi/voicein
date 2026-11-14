@@ -6,7 +6,7 @@ Toggle dictation for **Ubuntu GNOME X11**: press a shortcut to record, transcrib
 
 ## Requirements
 
-- Ubuntu 24.04+ GNOME session on **X11** (clipboard paste uses `xdotool`)
+- Ubuntu GNOME on **X11** (`xdotool`) or **Wayland** (`ydotool` + `ydotoold` — run `./scripts/setup-wayland-paste.sh` after `sudo apt install ydotool`; **wtype does not work on GNOME**)
 - Microphone access
 - `xdotool`, `xclip`, `paplay` (PulseAudio), PortAudio (`libportaudio2` / headers for build)
 - Python 3.10+
@@ -66,7 +66,8 @@ User systemd / GNOME autostart files are installed by `install.sh` but **disable
 ## Usage — on-demand toggle
 
 - **First press** — start recording (notification + start sound)
-- **Second press** — stop, transcribe, paste, exit (notification + stop sound + paste sound)
+- **Second press** — stop, transcribe, paste, exit (stop sound + paste sound + tray icon states)
+- **Tray icon** (toggle mode): gray = ready, red pulse = recording, amber = transcribing, green flash = pasted (`./scripts/install-toggle-shortcut.sh` enables autostart)
 - Logs: `~/.local/state/voicein/toggle.log`
 
 ### Audio cues
@@ -118,7 +119,22 @@ source .venv/bin/activate
 pip install -e .
 python -m voicein run -v
 python -m voicein toggle -v
+python -m voicein web
 ```
+
+## Phone web recorder (AnyDesk)
+
+Same STT + paste, using the **phone microphone**. Bookmark `https://voice.rasdine.com` (subdomain only; the main site is unchanged).
+
+```bash
+./scripts/install-web.sh
+./scripts/setup-cloudflare-tunnel.sh   # one-time Cloudflare login in a browser
+```
+
+- Sign in once with the generated password (not a short PIN). Stays signed in **90 days**.
+- Auth hash lives in `~/.config/voicein/web-auth.toml` (mode 600). Rotate with `python -m voicein web-setup --rotate`.
+- The listener binds **127.0.0.1 only**; the internet reaches it through Cloudflare HTTPS.
+- Recent clips (phone + laptop) are kept in `~/.local/state/voicein/clips` (`phone-*.webm` vs `laptop-*.wav`). Oldest are deleted after 40 files, 14 days, or ~400 MB.
 
 ## License
 

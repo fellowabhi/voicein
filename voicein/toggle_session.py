@@ -19,13 +19,26 @@ from voicein.cues import play_recording_cue
 
 logger = logging.getLogger(__name__)
 
-_PHASE_RECORDING = 'recording'
-_PHASE_PROCESSING = 'processing'
+PHASE_RECORDING = 'recording'
+PHASE_PROCESSING = 'processing'
+PHASE_SUCCESS = 'success'
+PHASE_ERROR = 'error'
+
+_PHASE_RECORDING = PHASE_RECORDING
+_PHASE_PROCESSING = PHASE_PROCESSING
+
+
+def runtime_dir() -> Path:
+    base = os.environ.get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')
+    return Path(base) / 'voicein'
+
+
+def tray_pid_path() -> Path:
+    return runtime_dir() / 'tray.pid'
 
 
 def _runtime_dir() -> Path:
-    base = os.environ.get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')
-    return Path(base) / 'voicein'
+    return runtime_dir()
 
 
 def _state_path() -> Path:
@@ -77,6 +90,8 @@ def configure_toggle_logging(*, verbose: bool) -> None:
 
 
 def _notify(title: str, body: str = '') -> None:
+    if not load_config().feedback_desktop_notifications:
+        return
     if not shutil.which('notify-send'):
         return
     args = ['notify-send', '-a', 'VoiceIn', title]
@@ -88,7 +103,7 @@ def _notify(title: str, body: str = '') -> None:
         pass
 
 
-def _read_state() -> dict | None:
+def read_session_state() -> dict | None:
     path = _state_path()
     if not path.is_file():
         return None
@@ -98,20 +113,30 @@ def _read_state() -> dict | None:
         return None
 
 
-def _write_state(*, pid: int, phase: str) -> None:
+def _read_state() -> dict | None:
+    return read_session_state()
+
+
+def _write_state(*, pid: int, phase: str, detail: str = '') -> None:
     _runtime_dir().mkdir(parents=True, exist_ok=True)
-    payload = {'pid': pid, 'phase': phase, 'started': time.time()}
+    payload: dict[str, object] = {'pid': pid, 'phase': phase, 'started': time.time()}
+    if detail:
+        payload['detail'] = detail
     _state_path().write_text(json.dumps(payload), encoding='utf-8')
 
 
-def _clear_state() -> None:
+def clear_session_state() -> None:
     try:
         _state_path().unlink(missing_ok=True)
     except OSError:
         pass
 
 
-def _pid_alive(pid: int) -> bool:
+def _clear_state() -> None:
+    clear_session_state()
+
+
+def pid_alive(pid: int) -> bool:
     if pid <= 0:
         return False
     try:
@@ -119,6 +144,29 @@ def _pid_alive(pid: int) -> bool:
     except OSError:
         return False
     return True
+
+
+def _pid_alive(pid: int) -> bool:
+    return pid_alive(pid)
+
+
+def ensure_toggle_tray() -> None:
+    """Keep a single status tray process for toggle-mode feedback."""
+    path = tray_pid_path()
+    if path.is_file():
+        try:
+            if pid_alive(int(path.read_text(encoding='utf-8').strip())):
+                return
+        except (OSError, ValueError):
+            pass
+    subprocess.Popen(
+        [sys.executable, '-m', 'voicein', 'toggle-tray'],
+        env=os.environ.copy(),
+        start_new_session=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 
 def _spawn_record_session() -> None:
@@ -167,6 +215,7 @@ def handle_toggle(*, verbose: bool = False) -> int:
         play_recording_cue('start', spec=cfg.cue_sound_start, block=False)
         configure_toggle_logging(verbose=verbose)
         logger.info('Starting new recording session')
+        ensure_toggle_tray()
         _spawn_record_session()
         _notify('VoiceIn', 'Recording — press shortcut again to stop')
         return 0
@@ -185,6 +234,7 @@ def run_record_session() -> int:
 
     configure_toggle_logging(verbose=False)
     cfg = load_config()
+    ensure_toggle_tray()
 
     if not cfg.openai_api_key:
         logger.error('Missing API key')
@@ -258,15 +308,17 @@ def run_record_session() -> int:
         _notify('VoiceIn', 'Transcription failed — see toggle.log')
         return 1
 
-    _clear_state()
     if okay:
         snippet = detail.replace('\r', '').splitlines()[0][:120]
         logger.info('%s', detail)
         play_recording_cue('paste', spec=cfg.cue_sound_paste)
+        _write_state(pid=0, phase=PHASE_SUCCESS, detail=snippet)
         return 0
 
     logger.warning('%s', detail)
-    _notify('VoiceIn', detail[:180] or 'Transcription failed')
+    err = detail[:180] or 'Transcription failed'
+    _write_state(pid=0, phase=PHASE_ERROR, detail=err)
+    _notify('VoiceIn', err)
     return 1
 
 
