@@ -1,0 +1,86 @@
+name: Android
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["android-v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install Android SDK
+        run: |
+          mkdir -p "$HOME/android-sdk/cmdline-tools"
+          curl -fsSL -o /tmp/cmdtools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q /tmp/cmdtools.zip -d /tmp/cmdtools
+          mv /tmp/cmdtools/cmdline-tools "$HOME/android-sdk/cmdline-tools/latest"
+          echo "ANDROID_HOME=$HOME/android-sdk" >> "$GITHUB_ENV"
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$HOME/android-sdk/platform-tools" >> "$GITHUB_PATH"
+
+      - name: Install SDK packages
+        run: |
+          set +o pipefail
+          yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses >/dev/null || true
+          sdkmanager --sdk_root="$ANDROID_HOME" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Test and build debug APK
+        working-directory: android
+        run: ./gradlew test assembleDebug --stacktrace
+
+      - name: Collect APK
+        run: |
+          apk=$(find android/app/build/outputs/apk/debug -name '*.apk' -print -quit)
+          test -n "$apk"
+          mkdir -p dist
+          cp "$apk" dist/voicein-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: voicein-debug
+          path: dist/voicein-debug.apk
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/android-v')
+    needs: apk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: voicein-debug
+          path: dist
+
+      - name: Attach APK to the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="Debug-signed VoiceIn Android bubble. Sideload with: adb install -r voicein-debug.apk. If the signature does not match an older install, uninstall VoiceIn first."
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/voicein-debug.apk --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist/voicein-debug.apk \
+              --title "VoiceIn Android ${GITHUB_REF_NAME}" \
+              --notes "$notes"
+          fi
