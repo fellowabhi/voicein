@@ -136,6 +136,34 @@ Same STT + paste, using the **phone microphone**. Bookmark `https://voice.rasdin
 - The listener binds **127.0.0.1 only**; the internet reaches it through Cloudflare HTTPS.
 - Recent clips (phone + laptop) are kept in `~/.local/state/voicein/clips` (`phone-*.webm` vs `laptop-*.wav`). Oldest are deleted after 40 files, 14 days, or ~400 MB.
 
+## Android bubble
+
+A small app in `android/` floats a bubble over other apps so you can dictate without leaving what you're doing. Tap to record from the phone mic, tap again to upload. The laptop transcribes and pastes, same as the phone web recorder. The phone does not show the transcript.
+
+It uses the web server as-is. Sign-in is a form `POST /login`; the app keeps the `voicein_auth` cookie from the `303` response and does not follow the redirect. Upload is a raw `POST /transcribe` with `Content-Type: audio/mp4` (AAC), the session cookie, `X-VoiceIn: 1`, and `Origin` set to the server URL. That origin is the same check the browser page passes, so it has to match the laptop's `public_host` (default `voice.rasdine.com`). The password is not stored on the phone.
+
+### Install
+
+Download `voicein-debug.apk` from the GitHub Actions artifact (workflow **Android**), or from a release tagged `android-v*`. Or build it:
+
+```bash
+cd android
+./gradlew assembleDebug
+adb install -r app/build/outputs/apk/debug/voicein-debug.apk
+```
+
+The APK is debug-signed for sideloading. If Android reports a signature mismatch, uninstall VoiceIn and install again.
+
+### Use
+
+1. Open VoiceIn. Leave the server as `https://voice.rasdine.com` unless yours is different, and enter the web password once.
+2. Allow the microphone, notifications, and **Display over other apps**.
+3. Tap **Show bubble**, then switch to any other app.
+4. Tap the bubble to record, tap again to send. Drag it; it snaps to the left or right edge.
+5. Long-press the bubble, or drag it onto the X, to hide it. That cancels a recording that has not been sent yet. The ongoing notification can record, stop, or hide too.
+
+The bubble is blue when ready, red while recording, amber while uploading, green after the laptop pastes, and dark red on an error. A recording sends itself after 5 minutes. If the bubble disappears after a while, exempt VoiceIn from battery optimization.
+
 ## License
 
 MIT

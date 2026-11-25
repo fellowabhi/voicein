@@ -10,3 +10,11 @@ build/
 .env
 .idea/
 *.wav
+
+# Android (the APK is a CI artifact, not source)
+android/.gradle/
+android/local.properties
+android/**/build/
+*.apk
+*.aab
+*.keystore
