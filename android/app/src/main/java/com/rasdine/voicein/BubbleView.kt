@@ -33,6 +33,24 @@ internal class BubbleView(context: Context) : View(context) {
 
     var listener: Listener? = null
 
+    var sizeDp: Int = BubbleMetrics.SIZE_DEFAULT_DP
+        set(value) {
+            val next = BubbleMetrics.sizeDp(value)
+            if (field == next) return
+            field = next
+            requestLayout()
+            invalidate()
+        }
+
+    /** User-chosen opacity, 35–100. Drawing lifts this while recording. */
+    var userOpacityPercent: Int = BubbleMetrics.OPACITY_DEFAULT
+        set(value) {
+            val next = BubbleMetrics.opacityPercent(value)
+            if (field == next) return
+            field = next
+            invalidate()
+        }
+
     var state: BubbleState = BubbleState.IDLE
         set(value) {
             if (field == value) return
@@ -85,30 +103,36 @@ internal class BubbleView(context: Context) : View(context) {
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val size = context.dp(72)
-        setMeasuredDimension(size, size)
+        val preferred = context.dp(sizeDp)
+        setMeasuredDimension(
+            resolveSize(preferred, widthMeasureSpec),
+            resolveSize(preferred, heightMeasureSpec),
+        )
     }
 
     override fun onDraw(canvas: Canvas) {
         val cx = width / 2f
         val cy = height / 2f
-        val radius = width / 2f - context.dp(6)
+        val inset = (width * 0.08f).coerceAtLeast(context.dp(2).toFloat())
+        val radius = width / 2f - inset
         val color = colorFor(state)
+        val alpha = paintAlpha()
+        stroke.strokeWidth = (width * 0.045f).coerceAtLeast(context.dp(2).toFloat())
+        stroke.alpha = alpha
 
         if (state == BubbleState.RECORDING) {
             fill.color = color
-            fill.alpha = (70 + 80 * (1f - pulse)).toInt()
-            canvas.drawCircle(cx, cy, radius + context.dp(4) * pulse, fill)
+            fill.alpha = ((70 + 80 * (1f - pulse)) * alpha / 255f).toInt().coerceIn(0, 255)
+            canvas.drawCircle(cx, cy, radius + inset * 0.65f * pulse, fill)
         }
 
-        fill.alpha = 255
+        fill.alpha = alpha
         fill.color = color
         canvas.drawCircle(cx, cy, radius, fill)
 
         if (state == BubbleState.UPLOADING) {
             val r = radius * 0.42f
             arc.set(cx - r, cy - r, cx + r, cy + r)
-            stroke.strokeWidth = context.dp(3).toFloat()
             canvas.drawArc(arc, spin, 110f, false, stroke)
             return
         }
@@ -163,8 +187,18 @@ internal class BubbleView(context: Context) : View(context) {
         super.onDetachedFromWindow()
     }
 
+    private fun paintAlpha(): Int {
+        val lift = when (state) {
+            BubbleState.RECORDING -> 0.6f
+            BubbleState.UPLOADING, BubbleState.SUCCESS, BubbleState.ERROR -> 0.4f
+            BubbleState.IDLE -> 0f
+        }
+        return (BubbleMetrics.shownOpacity(userOpacityPercent, lift) * 255f).toInt().coerceIn(0, 255)
+    }
+
     private fun drawMic(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
-        val half = (radius * 0.48f).toInt()
+        val half = (radius * 0.48f).toInt().coerceAtLeast(1)
+        mic.alpha = fill.alpha
         mic.setBounds((cx - half).toInt(), (cy - half).toInt(), (cx + half).toInt(), (cy + half).toInt())
         mic.draw(canvas)
     }

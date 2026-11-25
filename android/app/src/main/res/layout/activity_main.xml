@@ -110,6 +110,60 @@
             android:layout_height="wrap_content"
             android:text="@string/hide_bubble" />
 
+        <LinearLayout
+            android:id="@+id/appearance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/sizeLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/bubble_size"
+                android:textColor="@color/text"
+                android:textSize="15sp" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sizeSlider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/bubble_size"
+                android:stepSize="1"
+                android:value="48"
+                android:valueFrom="40"
+                android:valueTo="96"
+                app:labelBehavior="gone" />
+
+            <TextView
+                android:id="@+id/opacityLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/bubble_opacity"
+                android:textColor="@color/text"
+                android:textSize="15sp" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/opacitySlider"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/bubble_opacity"
+                android:stepSize="1"
+                android:value="100"
+                android:valueFrom="35"
+                android:valueTo="100"
+                app:labelBehavior="gone" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/opacity_hint"
+                android:textColor="@color/muted"
+                android:textSize="13sp" />
+        </LinearLayout>
+
         <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/haptics"
             android:layout_width="match_parent"

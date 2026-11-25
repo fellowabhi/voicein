@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.inputmethod.EditorInfo
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +18,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.slider.Slider
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -39,6 +41,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var hideBubble: MaterialButton
     private lateinit var signOut: MaterialButton
     private lateinit var haptics: SwitchMaterial
+    private lateinit var appearance: LinearLayout
+    private lateinit var sizeSlider: Slider
+    private lateinit var opacitySlider: Slider
+    private lateinit var sizeLabel: TextView
+    private lateinit var opacityLabel: TextView
     private lateinit var permissions: TextView
     private lateinit var sessionNote: TextView
     private lateinit var status: TextView
@@ -66,6 +73,7 @@ class MainActivity : AppCompatActivity() {
         serverUrl.setText(store.serverUrl)
         haptics.isChecked = store.haptics
         haptics.setOnCheckedChangeListener { _, checked -> store.haptics = checked }
+        bindAppearance()
         password.doAfterTextChanged { if (!signingIn) signIn.isEnabled = !it.isNullOrEmpty() }
         password.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE && signIn.isEnabled) {
@@ -106,6 +114,11 @@ class MainActivity : AppCompatActivity() {
         hideBubble = findViewById(R.id.hideBubble)
         signOut = findViewById(R.id.signOut)
         haptics = findViewById(R.id.haptics)
+        appearance = findViewById(R.id.appearance)
+        sizeSlider = findViewById(R.id.sizeSlider)
+        opacitySlider = findViewById(R.id.opacitySlider)
+        sizeLabel = findViewById(R.id.sizeLabel)
+        opacityLabel = findViewById(R.id.opacityLabel)
         permissions = findViewById(R.id.permissions)
         sessionNote = findViewById(R.id.sessionNote)
         status = findViewById(R.id.status)
@@ -132,6 +145,7 @@ class MainActivity : AppCompatActivity() {
         permissions.visibility = if (signedIn) android.view.View.VISIBLE else android.view.View.GONE
         showBubble.visibility = if (signedIn) android.view.View.VISIBLE else android.view.View.GONE
         hideBubble.visibility = if (signedIn) android.view.View.VISIBLE else android.view.View.GONE
+        appearance.visibility = if (signedIn) android.view.View.VISIBLE else android.view.View.GONE
         haptics.visibility = if (signedIn) android.view.View.VISIBLE else android.view.View.GONE
         signOut.visibility = if (signedIn) android.view.View.VISIBLE else android.view.View.GONE
         serverLayout.isEnabled = !signedIn
@@ -143,7 +157,41 @@ class MainActivity : AppCompatActivity() {
                 else -> getString(R.string.show_bubble)
             }
             if (haptics.isChecked != store.haptics) haptics.isChecked = store.haptics
+            syncAppearanceSliders()
         }
+    }
+
+    private fun bindAppearance() {
+        sizeSlider.valueFrom = BubbleMetrics.SIZE_MIN_DP.toFloat()
+        sizeSlider.valueTo = BubbleMetrics.SIZE_MAX_DP.toFloat()
+        sizeSlider.stepSize = 1f
+        opacitySlider.valueFrom = BubbleMetrics.OPACITY_MIN.toFloat()
+        opacitySlider.valueTo = BubbleMetrics.OPACITY_MAX.toFloat()
+        opacitySlider.stepSize = 1f
+        syncAppearanceSliders()
+        sizeSlider.addOnChangeListener { _, value, fromUser ->
+            if (!fromUser) return@addOnChangeListener
+            store.bubbleSizeDp = value.toInt()
+            refreshAppearanceLabels()
+        }
+        opacitySlider.addOnChangeListener { _, value, fromUser ->
+            if (!fromUser) return@addOnChangeListener
+            store.bubbleOpacityPercent = value.toInt()
+            refreshAppearanceLabels()
+        }
+    }
+
+    private fun syncAppearanceSliders() {
+        val size = store.bubbleSizeDp.toFloat()
+        if (sizeSlider.value != size) sizeSlider.value = size
+        val opacity = store.bubbleOpacityPercent.toFloat()
+        if (opacitySlider.value != opacity) opacitySlider.value = opacity
+        refreshAppearanceLabels()
+    }
+
+    private fun refreshAppearanceLabels() {
+        sizeLabel.text = getString(R.string.bubble_size_value, store.bubbleSizeDp)
+        opacityLabel.text = getString(R.string.bubble_opacity_value, store.bubbleOpacityPercent)
     }
 
     private fun signIn() {

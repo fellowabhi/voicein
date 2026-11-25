@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.ComponentCallbacks
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.content.res.Configuration
 import android.graphics.PixelFormat
@@ -64,6 +65,10 @@ class BubbleService : Service(), BubbleView.Listener {
     private var epoch = 0
     private var dragStartX = 0
     private var dragStartY = 0
+    private val appearanceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key != SessionStore.KEY_BUBBLE_SIZE && key != SessionStore.KEY_BUBBLE_OPACITY) return@OnSharedPreferenceChangeListener
+        if (Looper.myLooper() == Looper.getMainLooper()) applyAppearance() else main.post { applyAppearance() }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -75,6 +80,7 @@ class BubbleService : Service(), BubbleView.Listener {
         detailText = getString(R.string.notif_idle)
         createChannel()
         registerComponentCallbacks(configCallback)
+        store.watchAppearance(appearanceListener)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -109,6 +115,7 @@ class BubbleService : Service(), BubbleView.Listener {
         recorder?.discard()
         recorder = null
         releaseWake()
+        store.unwatchAppearance(appearanceListener)
         unregisterComponentCallbacks(configCallback)
         io.shutdown()
         super.onDestroy()
@@ -276,8 +283,10 @@ class BubbleService : Service(), BubbleView.Listener {
         }
         val view = BubbleView(this)
         view.listener = this
+        view.sizeDp = store.bubbleSizeDp
+        view.userOpacityPercent = store.bubbleOpacityPercent
         view.state = state
-        params = overlayParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT)
+        params = overlayParams(bubbleSizePx(), bubbleSizePx())
         placeInitially()
         try {
             windowManager.addView(view, params)
@@ -292,7 +301,7 @@ class BubbleService : Service(), BubbleView.Listener {
 
     private fun placeInitially() {
         val screen = screen()
-        val size = dp(72)
+        val size = bubbleSizePx()
         val margin = dp(8)
         val saved = store.bubblePosition()
         if (saved != null) {
@@ -306,8 +315,8 @@ class BubbleService : Service(), BubbleView.Listener {
 
     private fun moveTo(x: Int, y: Int) {
         val screen = screen()
-        val w = bubble?.width?.takeIf { it > 0 } ?: dp(72)
-        val h = bubble?.height?.takeIf { it > 0 } ?: dp(72)
+        val w = bubbleExtent()
+        val h = w
         params.x = x.coerceIn(0, (screen.first - w).coerceAtLeast(0))
         params.y = y.coerceIn(0, (screen.second - h).coerceAtLeast(0))
         val view = bubble ?: return
@@ -319,8 +328,8 @@ class BubbleService : Service(), BubbleView.Listener {
         val view = bubble ?: return
         if (!view.isAttachedToWindow) return
         val screen = screen()
-        val w = view.width.takeIf { it > 0 } ?: dp(72)
-        val h = view.height.takeIf { it > 0 } ?: dp(72)
+        val w = bubbleExtent()
+        val h = w
         val margin = dp(8)
         val mid = params.x + w / 2
         params.x = if (mid < screen.first / 2) margin else (screen.first - w - margin).coerceAtLeast(margin)
@@ -356,8 +365,8 @@ class BubbleService : Service(), BubbleView.Listener {
     }
 
     private fun overDismiss(): Boolean {
-        val w = bubble?.width?.takeIf { it > 0 } ?: dp(72)
-        val h = bubble?.height?.takeIf { it > 0 } ?: dp(72)
+        val w = bubbleExtent()
+        val h = w
         val bx = params.x + w / 2
         val by = params.y + h / 2
         val screen = screen()
@@ -386,6 +395,26 @@ class BubbleService : Service(), BubbleView.Listener {
         } catch (_: RuntimeException) {
             // Already gone, or removed from inside its own touch dispatch.
         }
+    }
+
+    private fun bubbleSizePx(): Int = dp(store.bubbleSizeDp)
+
+    private fun bubbleExtent(): Int {
+        if (::params.isInitialized && params.width > 0) return params.width
+        return bubbleSizePx()
+    }
+
+    private fun applyAppearance() {
+        val view = bubble ?: return
+        if (!::params.isInitialized || !view.isAttachedToWindow) return
+        val sizeChanged = view.sizeDp != store.bubbleSizeDp
+        view.sizeDp = store.bubbleSizeDp
+        view.userOpacityPercent = store.bubbleOpacityPercent
+        if (!sizeChanged) return
+        val size = bubbleSizePx()
+        params.width = size
+        params.height = size
+        snap()
     }
 
     private fun overlayParams(width: Int, height: Int): WindowManager.LayoutParams {

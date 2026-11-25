@@ -161,6 +161,7 @@ The APK is debug-signed for sideloading. If Android reports a signature mismatch
 3. Tap **Show bubble**, then switch to any other app.
 4. Tap the bubble to record, tap again to send. Drag it; it snaps to the left or right edge.
 5. Long-press the bubble, or drag it onto the X, to hide it. That cancels a recording that has not been sent yet. The ongoing notification can record, stop, or hide too.
+6. **Size** and **Opacity** sliders (after sign-in) change the bubble immediately and are remembered. Size runs from 40 to 96 dp and starts at 48. Opacity cannot go below 35% so it stays visible; while recording it turns more solid than the slider, so the red state is still obvious.
 
 The bubble is blue when ready, red while recording, amber while uploading, green after the laptop pastes, and dark red on an error. A recording sends itself after 5 minutes. If the bubble disappears after a while, exempt VoiceIn from battery optimization.
 

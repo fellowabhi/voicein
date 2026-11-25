@@ -11,6 +11,11 @@
     <string name="allow_mic">Allow microphone</string>
     <string name="allow_overlay">Allow display over other apps</string>
     <string name="haptics">Short vibration when recording starts and stops</string>
+    <string name="bubble_size">Size</string>
+    <string name="bubble_size_value">Size · %1$d dp</string>
+    <string name="bubble_opacity">Opacity</string>
+    <string name="bubble_opacity_value">Opacity · %1$d%%</string>
+    <string name="opacity_hint">Lower lets the screen show through. It turns more solid while recording.</string>
     <string name="session_note">The password is not stored. The session cookie stays on this phone for up to 90 days, same as the website.</string>
     <string name="signing_in">Signing in…</string>
     <string name="signed_in_ready">Signed in. Allow the permissions below, then show the bubble.</string>
