@@ -284,9 +284,9 @@ class BubbleService : Service(), BubbleView.Listener {
         val view = BubbleView(this)
         view.listener = this
         view.sizeDp = store.bubbleSizeDp
-        view.userOpacityPercent = store.bubbleOpacityPercent
         view.state = state
         params = overlayParams(bubbleSizePx(), bubbleSizePx())
+        params.alpha = windowAlpha()
         placeInitially()
         try {
             windowManager.addView(view, params)
@@ -409,13 +409,35 @@ class BubbleService : Service(), BubbleView.Listener {
         if (!::params.isInitialized || !view.isAttachedToWindow) return
         val sizeChanged = view.sizeDp != store.bubbleSizeDp
         view.sizeDp = store.bubbleSizeDp
-        view.userOpacityPercent = store.bubbleOpacityPercent
-        if (!sizeChanged) return
-        val size = bubbleSizePx()
-        params.width = size
-        params.height = size
-        snap()
+        params.alpha = windowAlpha()
+        if (sizeChanged) {
+            val size = bubbleSizePx()
+            params.width = size
+            params.height = size
+            snap()
+            return
+        }
+        try {
+            windowManager.updateViewLayout(view, params)
+        } catch (_: RuntimeException) {
+            // Window already removed.
+        }
     }
+
+    /**
+     * Alpha of the overlay window, not of the paint.
+     *
+     * The previous build set the paint alpha and then called `Paint.setColor()`,
+     * which replaces that alpha with the color's own byte (`0xFF`). The disc was
+     * always opaque. Window alpha is also what SurfaceFlinger blends with the
+     * apps behind this overlay, including after the service is created again.
+     *
+     * Android 12+ drops touches that would pass *through* an overlay whose
+     * `LayoutParams.alpha` is below 0.8. This window is only as big as the bubble
+     * and it consumes every touch that hits it, so the bubble stays tappable
+     * below that line. The slider is not clamped to 0.8.
+     */
+    private fun windowAlpha(): Float = BubbleMetrics.windowAlpha(store.bubbleOpacityPercent, state)
 
     private fun overlayParams(width: Int, height: Int): WindowManager.LayoutParams {
         return WindowManager.LayoutParams(
@@ -454,6 +476,15 @@ class BubbleService : Service(), BubbleView.Listener {
         state = next
         detailText = detail
         bubble?.state = next
+        if (::params.isInitialized) params.alpha = windowAlpha()
+        val view = bubble
+        if (view != null && view.isAttachedToWindow) {
+            try {
+                windowManager.updateViewLayout(view, params)
+            } catch (_: RuntimeException) {
+                // Window already removed.
+            }
+        }
         publish()
     }
 

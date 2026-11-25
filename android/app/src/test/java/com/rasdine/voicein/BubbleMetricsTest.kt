@@ -25,4 +25,15 @@ class BubbleMetricsTest {
         assertTrue(recording > 0.35f)
         assertTrue(recording < 1f)
     }
+
+    @Test
+    fun idleWindowAlphaMatchesTheSliderSoTheOverlayCanFade() {
+        assertEquals(1f, BubbleMetrics.windowAlpha(100, BubbleState.IDLE), 0.001f)
+        assertEquals(0.35f, BubbleMetrics.windowAlpha(35, BubbleState.IDLE), 0.001f)
+        assertEquals(0.5f, BubbleMetrics.windowAlpha(50, BubbleState.IDLE), 0.001f)
+        val recording = BubbleMetrics.windowAlpha(35, BubbleState.RECORDING)
+        assertTrue(recording > BubbleMetrics.windowAlpha(35, BubbleState.IDLE))
+        assertTrue(recording < 1f)
+        assertEquals(1f, BubbleMetrics.windowAlpha(100, BubbleState.RECORDING), 0.001f)
+    }
 }

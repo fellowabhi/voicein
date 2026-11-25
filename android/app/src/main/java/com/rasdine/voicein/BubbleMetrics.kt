@@ -23,4 +23,17 @@ internal object BubbleMetrics {
         val clamped = lift.coerceIn(0f, 1f)
         return user + (1f - user) * clamped
     }
+
+    /**
+     * Alpha for [android.view.WindowManager.LayoutParams.alpha].
+     * Idle uses the slider as-is. Recording lifts toward solid.
+     */
+    fun windowAlpha(opacityPercent: Int, state: BubbleState): Float {
+        val lift = when (state) {
+            BubbleState.RECORDING -> 0.6f
+            BubbleState.UPLOADING, BubbleState.SUCCESS, BubbleState.ERROR -> 0.4f
+            BubbleState.IDLE -> 0f
+        }
+        return shownOpacity(opacityPercent, lift)
+    }
 }
